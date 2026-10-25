@@ -200,8 +200,13 @@ Também configurei uma política de repetição para falhas transitórias na exe
 
 A definição completa da máquina de estados está apresentada no Apêndice A.
 
-Etapa 6 — Configurar o workflow
-Agora precisamos conectar os serviços. A definição abaixo representa a máquina de estados que você pode colar no editor de código do Step Functions, substituindo os valores entre <...> pelos ARNs reais dos seus recursos.
+### Etapa 6 — Configurar o workflow
+
+Nesta etapa, configurei a máquina de estados do AWS Step Functions utilizando a linguagem Amazon States Language (ASL).
+
+A definição abaixo representa o fluxo de processamento das notas fiscais. Antes de utilizá-la, é necessário substituir os valores indicados pelos ARNs e nomes reais dos recursos criados na AWS.
+
+```json
 {
   "Comment": "Workflow de validacao de notas fiscais",
   "StartAt": "ValidarNota",
@@ -299,6 +304,18 @@ Agora precisamos conectar os serviços. A definição abaixo representa a máqui
     }
   }
 }
+```
+
+#### Como funciona
+
+1. `ValidarNota`: executa a função Lambda e recebe o resultado da validação.
+2. `DecidirResultado`: verifica se a nota foi aprovada ou rejeitada.
+3. `RegistrarResultado`: armazena os dados no DynamoDB.
+4. `NotificarResultado`: publica uma mensagem no SNS.
+5. `Sucesso`: finaliza o workflow.
+6. `FalhaTecnica`: encerra a execução quando ocorre uma falha técnica não recuperada.
+
+**Observação:** essa definição é destinada à implantação na AWS. Como o projeto está sendo desenvolvido inicialmente sem acesso à AWS, o código deverá ser adaptado para a versão local simulada antes de ser executado no computador.
 
 
 Como essa definição funciona?
@@ -309,6 +326,7 @@ Como essa definição funciona?
 5. O estado Sucesso encerra a execução.
 6. Se ocorrer uma falha técnica durante a validação, a máquina tenta novamente nas condições configuradas e, se o erro persistir, direciona a execução para FalhaTecnica.
 Atenção: o Retry apresentado cobre erros transitórios específicos da integração Lambda. Ajustes adicionais podem ser necessários para outros erros e para as etapas do DynamoDB e SNS. O Catch não significa que toda falha será recuperada; ele apenas direciona a execução para um estado de falha controlada.
+
 Etapa 7 — Executar o workflow
 Para iniciar uma execução, abri a máquina de estados no console, selecionei a opção de iniciar execução e informei o JSON de entrada.
 {
@@ -360,3 +378,23 @@ Idempotência: em uma versão de produção, o registro precisa impedir duplicid
 Proteção de dados: informações fiscais devem ser tratadas com cuidado, evitando dados desnecessários nos logs e restringindo o acesso aos recursos.
 
 Controle de custos: a utilização de serviços serverless permite começar com uma infraestrutura pequena, mas os custos dependem do número de execuções, armazenamento, chamadas e notificações.
+
+9. Melhorias futuras
+Como evolução do projeto, pretendo implementar as seguintes funcionalidades:
+- Iniciar automaticamente o workflow quando um arquivo for enviado ao S3, utilizando Amazon EventBridge.
+- Adicionar uma classificação de notas aprovadas com alertas, sem bloquear indevidamente o pagamento.
+- Integrar o Amazon Textract para extrair dados de documentos PDF.
+- Comparar os dados extraídos com informações contratuais.
+- Utilizar Amazon SQS para desacoplar etapas e absorver picos de processamento.
+- Criar mecanismos de idempotência e controle de duplicidade.
+- Integrar o fluxo com uma aplicação externa responsável pelo processo de pagamento.
+10. Conclusão
+Com este mini projeto, apliquei os conceitos de orquestração de workflows utilizando o AWS Step Functions e integrei diferentes serviços da AWS em um processo automatizado.
+
+O projeto demonstra como arquivos podem ser processados, validados, classificados, registrados e notificados por meio de um fluxo controlado e monitorável.
+
+Além de reduzir a necessidade de execução manual das etapas, essa arquitetura permite evoluir gradualmente para cenários mais complexos, como auditoria fiscal, validação contratual e integração com sistemas legados.
+
+Concluo que o AWS Step Functions é uma ferramenta adequada para coordenar processos com múltiplas etapas, especialmente quando existe a necessidade de visualizar o fluxo, controlar decisões e tratar falhas de forma estruturada.
+
+O resultado esperado é uma base funcional para estudos de automação em nuvem e para futuras aplicações em processos empresariais.
